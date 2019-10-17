@@ -164,5 +164,5 @@ for train_index, test_index in skf.split(X, y):
 final_score = sum(scores) / len(scores)
 
 # Final Score(LogisticRegression):#0.7827177299920132 -- lasts 1:30 hours
-#
+# Final Score(LogisticRegressionCV) : #0.7810126444566058 -- lasts 30 minutes
 
