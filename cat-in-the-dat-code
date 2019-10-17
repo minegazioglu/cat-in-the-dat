@@ -111,29 +111,21 @@ from sklearn.preprocessing import StandardScaler
 skf = StratifiedKFold(n_splits=10)
 
 scores = []
-i = 1
+#i = 1
 for train_index, test_index in skf.split(X, y):
-    print('{} of KFold {}'.format(i,skf.n_splits))
     X_train, X_test = X.iloc[train_index], X.iloc[test_index]
     y_train, y_test = y.iloc[train_index], y.iloc[test_index]
     X_test["id"] = X_test.index
     X_train["id"] = X_train.index
     basic_train = pd.concat([X_train,y_train], axis = 1)
-    ## Target Encoding
     columns_p = ['nom_1', 'nom_2','nom_3', 'nom_4', 'nom_5', 'nom_6', 'nom_7', 'nom_8', 'nom_9','ord_3', 'ord_4', 'ord_5']
     for column in columns_p:
-        df_dict = {}
         basic_df = basic_train.groupby([column,"target"]).count()["id"].reset_index()      
-        for i,element in enumerate(basic_df[column]):
-            total_1 = basic_df[(basic_df[column] == element) & (basic_df["target"] == 1)]["id"].values
-            total = (basic_df[(basic_df[column] == element) & (basic_df["target"] == 1)]["id"].values) + (basic_df[(basic_df[column] == element) & (basic_df["target"] == 0)]["id"].values)
-            total_0 = (basic_df[(basic_df[column] == element) & (basic_df["target"] == 0)]["id"].values)
-            if np.all((len(total_1) != 0) & (len(total_0) != 0)):
-                df_dict[element] = (total_1.item() / total.item())
-            elif len(total_0) == 0 :
-                df_dict[element] = 1   
-            else:
-                df_dict[element] = 0
+        df = basic_df.set_index(column)
+        u = df.loc[df.target.eq(1), 'id']
+        v = df.loc[df.target.eq(0), 'id']
+        s = u.divide(u.add(v, fill_value=0)).fillna(0)
+        df_dict = s.to_dict()
     
 
         X_train[column] = X_train[column].map(df_dict)
@@ -153,21 +145,24 @@ for train_index, test_index in skf.split(X, y):
     #print('Best roc_auc: {:.4}, with best C: {}'.format(clf.best_score_, clf.best_params_))
     #LogisticRegressionCV
     
-    lrcv = LogisticRegressionCV(cv=10)
+    lrcv = LogisticRegressionCV(cv=2)
     lrcv.fit(X_train,y_train)
-    predictions = lrcv.predict_proba(X_test)[:2, :]
+    predictions = lrcv.predict_proba(X_test)[:,1]
     #LogisticRegression
     
     #lr = LogisticRegression(penalty = "l1",solver = "liblinear",C=0.01 ,random_state = 42)
     #lr.fit(X_train,y_train)
     #predictions = lr.predict_proba(X_test)[:,1]
-    try:
-        score = roc_auc_score(y_test,predictions)
-    except ValueError:
-        pass
+    #try:
+    score = roc_auc_score(y_test,predictions)
+    #except ValueError:
+    #    pass
     scores.append(score)
-    print('ROC AUC score:',score)
-    i+=1
+    #print('ROC AUC score:',score)
+    #i+=1
     
 final_score = sum(scores) / len(scores)
-    
+
+# Final Score(LogisticRegression):#0.7827177299920132 -- lasts 1:30 hours
+#
+
