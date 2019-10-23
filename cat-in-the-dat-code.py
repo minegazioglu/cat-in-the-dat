@@ -112,6 +112,7 @@ y = train["target"]
 skf = StratifiedKFold(n_splits=10)
 # empty list to fill in roc_auc_scores for all 10 splits
 roc_auc_scores = []
+logistic_regression_cv_scores = []
 # splitting X,y
 for train_index, test_index in skf.split(X, y):
     X_train, X_test = X.iloc[train_index], X.iloc[test_index]
@@ -161,10 +162,11 @@ for train_index, test_index in skf.split(X, y):
     score = roc_auc_score(y_test,predictions)
     #append scores to roc_auc_scores list
     roc_auc_scores.append(score)
-    #logistic_regression_cv_scores.append(lrcv.scores_)
+    # append cv scores to the list
+    logistic_regression_cv_scores.append(lrcv.scores_)
 
 # take the average of the scores in roc_auc_list that will be the final_score
 final_score = sum(roc_auc_scores) / len(roc_auc_scores)
 print(final_score)
-
+print(logistic_regression_cv_scores)
 #final_score : 0.7860171962769986
