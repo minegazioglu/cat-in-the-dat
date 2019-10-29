@@ -149,6 +149,30 @@ for train_index, test_index in skf.split(X, y):
     X_train.fillna(X_train.mean(),inplace = True)
     X_test.fillna(X_train.mean(),inplace = True)
     
+    # Remove outliers
+    
+    # X_train
+    
+    Q1 = X_train.quantile(0.02)
+    Q3 = X_train.quantile(0.98)
+    IQR = Q3 - Q1
+    idx_train = ~((X_train < (Q1 - 1.5 * IQR)) |(X_train > (Q3 + 1.5 *  IQR))).any(axis=1)
+    X_train = X_train[idx_train]
+    # y_train
+    y_train = y_train[idx_train]
+    
+    
+    # X_test
+    
+    Q1 = X_test.quantile(0.02)
+    Q3 = X_test.quantile(0.98)
+    IQR = Q3 - Q1
+    idx_test = ~((X_test < (Q1 - 1.5 * IQR)) |(X_test > (Q3 + 1.5 *  IQR))).any(axis=1)
+    X_test = X_test[idx_test]
+    # y_test
+    y_test = y_test[idx_test]
+    
+    
     # Standard Scaler 
     ss = StandardScaler()
     X_train = ss.fit_transform(X_train)
@@ -156,7 +180,12 @@ for train_index, test_index in skf.split(X, y):
 
     #LogisticRegressionCV
     
-    lrcv = LogisticRegressionCV(cv=10,Cs = 1, random_state = 42)
+    lrcv = LogisticRegressionCV(cv=10,Cs = [0.01,0.1,1,10], 
+                                random_state = 100, 
+                                max_iter = 100,
+                                penalty = "l2", 
+                                solver = "liblinear", 
+                                dual = True)
     lrcv.fit(X_train,y_train)
     predictions = lrcv.predict_proba(X_test)[:,1]
     score = roc_auc_score(y_test,predictions)
@@ -169,4 +198,4 @@ for train_index, test_index in skf.split(X, y):
 final_score = sum(roc_auc_scores) / len(roc_auc_scores)
 print(final_score)
 print(logistic_regression_cv_scores)
-#final_score : 0.7860171962769986
+#final_score : 0.7867595153824183
