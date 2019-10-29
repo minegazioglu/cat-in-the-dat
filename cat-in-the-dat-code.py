@@ -185,7 +185,7 @@ for train_index, test_index in skf.split(X, y):
                                 max_iter = 100,
                                 penalty = "l2", 
                                 solver = "liblinear", 
-                                dual = True)
+                                dual = False)
     lrcv.fit(X_train,y_train)
     predictions = lrcv.predict_proba(X_test)[:,1]
     score = roc_auc_score(y_test,predictions)
