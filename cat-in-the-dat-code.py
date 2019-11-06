@@ -178,7 +178,10 @@ for train_index, test_index in skf.split(X, y):
     X_train = ss.fit_transform(X_train)
     X_test = ss.fit_transform(X_test)
 
-    #LogisticRegressionCV
+    # Algorithm Trials
+    # Algorithm are commented out to be used when needed for convenience
+    
+    #1.LogisticRegressionCV
     
     lrcv = LogisticRegressionCV(cv=10,Cs = [0.01,0.1,1,10], 
                                 random_state = 100, 
@@ -188,14 +191,109 @@ for train_index, test_index in skf.split(X, y):
                                 dual = False)
     lrcv.fit(X_train,y_train)
     predictions = lrcv.predict_proba(X_test)[:,1]
+    
+    #Roc auc score Evaluation
     score = roc_auc_score(y_test,predictions)
-    #append scores to roc_auc_scores list
     roc_auc_scores.append(score)
-    # append cv scores to the list
-    logistic_regression_cv_scores.append(lrcv.scores_)
+    
+    
+    #2.XGBoost
+    
+    #xgb_al = XGBClassifier(n_estimators = 200, 
+    #                       random_state = 42, 
+    #                       scale_pos_weight = 2, 
+    #                       booster = "gblinear",
+    #                       learning_rate = 0.3,
+    #                       min_child_weight = 1,
+    #                       max_depth = 2,
+    #                       gamma = 0,
+    #                       subsample = 0.6,
+    #                       colsample_bytree = 0.6,
+    #                       reg_lambda = 1,
+    #                       reg_alpha = 1e-5,
+    #                       seed = 0,
+    #                       cv = 10,
+    #                       early_stopping_rounds=50,
+    #                       scoring='roc_auc')
+    #xgb_al.fit(X_train,y_train)
+    #predictions = xgb_al.predict_proba(X_test)[:,1]
+    
+    #Roc auc score Evaluation
+    #score = roc_auc_score(y_test,predictions)
+    #roc_auc_scores.append(score)
+    #logistic_regression_cv_scores.append(lrcv.scores_)
+    
+    #3.RandomForest
+    #rf = RandomForestClassifier(bootstrap=True, 
+    #                            class_weight=None, 
+    #                            criterion='gini',
+    #                            max_depth=9, 
+    #                            max_features='auto', 
+    #                            max_leaf_nodes=None,
+    #                            min_impurity_decrease=0.0, 
+    #                            min_impurity_split=None,
+    #                            min_samples_leaf=1, 
+    #                            min_samples_split=2,
+    #                            min_weight_fraction_leaf=0.0, 
+    #                            n_estimators=500, 
+    #                            n_jobs=1,
+    #                            oob_score=False, 
+    #                            random_state=42, 
+    #                            verbose=0, 
+    #                            warm_start=False)
+    #rf.fit(X_train,y_train)
+    #predictions = rf.predict_proba(X_test)[:,1]
+    #score = roc_auc_score(y_test,predictions)
+    #roc_auc_scores.append(score)
+    
+    # 4.LightGBM
+    
+    #lgb_train = lgb.Dataset(X_train,y_train)
+    #lgb_eval = lgb.Dataset(X_test,y_test,reference = lgb_train)
+    #params = {  
+    #    'boosting_type': 'gbdt',  
+    #    'objective': 'binary',  
+    #    'metric': {'binary_logloss', 'auc'},  
+    #    'num_leaves':150, #former 150 0.7556
+    #    'max_depth': 20, #20 > #25 
+    #    'min_data_in_leaf': 200,#400
+    #    'learning_rate': 0.01,  
+    #    'feature_fraction': 0.95,  
+    #    'bagging_fraction': 0.95,  
+    #    'bagging_freq': 15, #20  
+    #    'lambda_l1': 0,    
+    #    'lambda_l2': 0, 
+    #    'min_gain_to_split': 0.1,#former 0.1:0.7120680551013195
+    #    'verbose': 0,  
+    #    'is_unbalance': True  }  
+    #
+    #gbm = lgb.train(params,  
+    #            lgb_train,  
+    #            num_boost_round=10000,  
+    #            valid_sets=lgb_eval,  
+    #            early_stopping_rounds=700)  
+    #
+    #predictions= gbm.predict(X_test, num_iteration=gbm.best_iteration)
+    #score = roc_auc_score(y_test,LGBM_TEST)
+    #roc_auc_scores.append(score)
+    
+    
+    # run Gridsearch on 4 different algorithm to tune their parameters
+    
+    # Gridsearch
+    
+    #param_test1 = {'parameter':[8,9,10]}
+    
+    #gr = GridSearchCV(algorithm,param_test1,verbose = 1,scoring='roc_auc')
+    #gr.fit(X_train,y_train)
+    #print(gr.cv_results_, gr.best_params_, gr.best_score_)
 
 # take the average of the scores in roc_auc_list that will be the final_score
 final_score = sum(roc_auc_scores) / len(roc_auc_scores)
 print(final_score)
-print(logistic_regression_cv_scores)
-#final_score : 0.7867595153824183
+
+
+#final_scores for each algorithm:
+# LogisticRegressionCV : 0.7867598254387023(13 mins)
+# XGBoost              : 0.7832078833509699(13 min 33 seconds) 
+# RandomForest         : 0.7428414695494446(1h 3min 49s)
