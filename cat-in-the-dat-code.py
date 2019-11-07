@@ -174,10 +174,10 @@ for train_index, test_index in skf.split(X, y):
     
     
     # Standard Scaler 
-    ss = StandardScaler()
-    X_train = ss.fit_transform(X_train)
-    X_test = ss.fit_transform(X_test)
-
+    sss = StandardScaler()
+    ss.fit(X_train)
+    X_train = ss.transform(X_train)
+    X_test = ss.transform(X_test)
     # Algorithm Trials
     # Algorithm are commented out to be used when needed for convenience
     
