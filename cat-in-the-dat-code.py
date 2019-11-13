@@ -98,6 +98,19 @@ train['day_cos'] = np.cos((train.day-1)*(2.*np.pi/6.0))
 test['day_sin'] = np.sin((test.day-1)*(2.*np.pi/6.0))
 test['day_cos'] = np.cos((test.day-1)*(2.*np.pi/6.0))
 
+columns_to_test = ['nom_7', 'nom_8', 'nom_9']
+#Replace the values that are both not present in train and test sets with the same value
+replace_xor = lambda x: 'xor' if x in xor_values else x
+
+for column in columns_to_test:
+    xor_values = set(train[column].unique()) ^ set(test[column].unique())
+    if xor_values:
+        print('Column', column, 'has', len(xor_values), 'XOR values')
+        train[column] = train[column].apply(replace_xor)
+        test[column] = test[column].apply(replace_xor)
+    else:
+        print('Column', column, 'has no XOR values')
+
 # drop id,target,day,month columns from train data
 new_train = train.drop(["id","target","day","month"], axis = 1)
 # drop id column from train data
