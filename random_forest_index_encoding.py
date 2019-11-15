@@ -112,47 +112,89 @@ y = train["target"]
 
 # Random Forest Region Indexes Encoding
 
-# OHE of categorical columns
+# Only filter categorical columns for X and test datasets
+categorical_columns_X = X.select_dtypes(include=['category','object'])
+categorical_columns_new_test = new_test.select_dtypes(include=['category','object'])
 
-# Make a copy of feature dataframe X to use in OneHotEncoding and then later in RandomForest
-OHE_X = X.copy()
+# Filter numerical columns
+numerical_columns_X = X[X.columns.difference(list(categorical_columns_X))]
+numerical_columns_new_test = new_test[new_test.columns.difference(list(categorical_columns_new_test))]
 
-#OHE on OHE_X
-cat_columns = list(OHE_X.select_dtypes(include=['category','object']))
-column_mask = []
-for column_name in list(OHE_X.columns.values):
-    column_mask.append(column_name in cat_columns)
-le = LabelEncoder()
-ohe = OneHotEncoder(categorical_features = column_mask)
-for col in cat_columns:
-    OHE_X[col] = le.fit_transform(OHE_X[col])
-OHE_X = ohe.fit_transform(OHE_X)
+# OHE
+ohe = OneHotEncoder()
 
-# RandomForest
-# Number of Trees: 5, Depth: 3 
-rf = RandomForestClassifier(n_estimators=5, max_depth=3,random_state=0)
-rf.fit(OHE_X, y)  
-# Get region indexes
-region_indexes = rf.apply(OHE_X)
+# Fit categorical_columns_X
+ohe.fit(categorical_columns_X)
 
-# Add region indexes to X & drop all categorical columns for both train and test datasets
+# Transform categorical_columns_X and categorical_columns_new_test
+categorical_columns_X = ohe.transform(categorical_columns_X)
+categorical_columns_new_test = ohe.transform(categorical_columns_new_test)
+
+# Random Forest
+rf = RandomForestClassifier(n_estimators = 50, max_depth = 8, random_state = 0)
+
+# rf.fit
+rf.fit(categorical_columns_X,y)
+
+# get the rf predictions (for future purposes)
+test_rf_predictions=rf.predict_proba(categorical_columns_new_test)[:,1]
+
+# Region indeces for categorical_columns_X and categorical_columns_new_test
+region_indexes = rf.apply(categorical_columns_X)
+region_indexes_test = rf.apply(categorical_columns_new_test)
+
+# OneHotEncoder
+enc = OneHotEncoder()
+enc.fit(region_indexes)
+
+train_encoding = enc.transform(region_indexes)
+test_encoding = enc.transform(region_indexes_test)
+
+type(train_encoding)
+type(test_encoding)
+# scipy.sparse.csr.csr_matrix
+
+# Need to concat scipy sparse csr matrices train_encoding and test_encoding to pandas dataframe to concat with numerical columns
+# Later apply logistic regression to merged dataframes
+# train
+categorical_dense_train = pd.DataFrame(train_encoding.toarray())
+# test
+categorical_dense_test = pd.DataFrame(test_encoding.toarray())
+
 #train
-X["regions"] = region_indexes.reshape(-1,1)
-X.drop(list(X.select_dtypes(include=['category','object'])),axis = 1,inplace = True)
-#test
-new_test["regions"] = region_indexes.reshape(-1,1)
-new_test.drop(list(new_test.select_dtypes(include=['category','object'])),axis = 1,inplace = True)
+
+# Concat resulting categorical dataframes with numerical ones
+# Give both categorical and numerical columns a common column by resetting their indexes
+numerical_columns_X.reset_index(inplace = True)
+categorical_dense_train.reset_index(inplace = True)
+
+# Merge
+processed_train = pd.merge(numerical_columns_X,categorical_dense_train, on = "index")
+# Drop index column
+processed_train.drop(["index"],axis = 1,inplace = True)
+
+### MEMORYERROR
+
+# test 
+
+# Concat resulting categorical dataframes with numerical ones
+# Give both categorical and numerical columns a common column by resetting their indexes
+numerical_columns_new_test.reset_index(inplace = True)
+categorical_dense_test.reset_index(inplace = True)
+
+# Merge
+processed_test = pd.merge(numerical_columns_new_test,categorical_dense_test, on = "index")
+# Drop index column
+processed_test.drop(["index"],axis = 1,inplace = True)
 
 # LogisticRegressionCV
 
 from sklearn.linear_model import LogisticRegressionCV
-lrcv = LogisticRegressionCV(cv=5, random_state=0,max_iter = 500).fit(X, y)
+lrcv = LogisticRegressionCV(cv=5, random_state=0,max_iter = 500,penalty='l2').fit(processed_train, y)
 
 
-sample_sub_df['target'] =  lrcv.predict_proba(new_test)[:,1]
+sample_sub_df['target'] =  lrcv.predict_proba(processed_test)[:,1]
 sample_sub_df.to_csv('submission47.csv', index=False)
-
-# Region indexes gives an array with shape (300000,5)
 
 
 
