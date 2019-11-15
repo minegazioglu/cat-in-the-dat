@@ -4,6 +4,10 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.preprocessing import LabelEncoder
+import warnings
+warnings.filterwarnings("ignore")
+import scipy.sparse as scipy
+from scipy.sparse import coo_matrix, hstack, csr_matrix
 
 # importing train & test data
 
@@ -152,40 +156,18 @@ test_encoding = enc.transform(region_indexes_test)
 
 type(train_encoding)
 type(test_encoding)
-# scipy.sparse.csr.csr_matrix
+# Convert numerical dataframe to sparse matrix
 
-# Need to concat scipy sparse csr matrices train_encoding and test_encoding to pandas dataframe to concat with numerical columns
-# Later apply logistic regression to merged dataframes
-# train
-categorical_dense_train = pd.DataFrame(train_encoding.toarray())
-# test
-categorical_dense_test = pd.DataFrame(test_encoding.toarray())
+numerical_X_sparse = scipy.csr_matrix(numerical_columns_X.values)
+numerical_test_sparse = scipy.csr_matrix(numerical_columns_new_test.values)
 
-#train
+# Concat sparse matrices
 
-# Concat resulting categorical dataframes with numerical ones
-# Give both categorical and numerical columns a common column by resetting their indexes
-numerical_columns_X.reset_index(inplace = True)
-categorical_dense_train.reset_index(inplace = True)
+from scipy.sparse import hstack
+processed_train = hstack((train_encoding, numerical_X_sparse))
 
-# Merge
-processed_train = pd.merge(numerical_columns_X,categorical_dense_train, on = "index")
-# Drop index column
-processed_train.drop(["index"],axis = 1,inplace = True)
+processed_test = hstack((test_encoding, numerical_test_sparse))
 
-### MEMORYERROR
-
-# test 
-
-# Concat resulting categorical dataframes with numerical ones
-# Give both categorical and numerical columns a common column by resetting their indexes
-numerical_columns_new_test.reset_index(inplace = True)
-categorical_dense_test.reset_index(inplace = True)
-
-# Merge
-processed_test = pd.merge(numerical_columns_new_test,categorical_dense_test, on = "index")
-# Drop index column
-processed_test.drop(["index"],axis = 1,inplace = True)
 
 # LogisticRegressionCV
 
@@ -195,6 +177,4 @@ lrcv = LogisticRegressionCV(cv=5, random_state=0,max_iter = 500,penalty='l2').fi
 
 sample_sub_df['target'] =  lrcv.predict_proba(processed_test)[:,1]
 sample_sub_df.to_csv('submission47.csv', index=False)
-
-
 
