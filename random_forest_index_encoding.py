@@ -175,9 +175,9 @@ numerical_test_sparse = scipy.csr_matrix(numerical_columns_new_test.values)
 # Concat sparse matrices
 
 from scipy.sparse import hstack
-processed_train = hstack((train_encoding, numerical_X_sparse))
+processed_train = hstack((train_encoding_reduced, numerical_X_sparse))
 
-processed_test = hstack((test_encoding, numerical_test_sparse))
+processed_test = hstack((test_encoding_reduced, numerical_test_sparse))
 
 
 # LogisticRegressionCV
