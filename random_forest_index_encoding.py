@@ -135,17 +135,23 @@ categorical_columns_X = ohe.transform(categorical_columns_X)
 categorical_columns_new_test = ohe.transform(categorical_columns_new_test)
 
 # Random Forest
-rf = RandomForestClassifier(n_estimators = 50, max_depth = 8, random_state = 0)
-
+#rf = RandomForestClassifier(n_estimators = 50, max_depth = 8, random_state = 0)
 # rf.fit
-rf.fit(categorical_columns_X,y)
-
+#rf.fit(categorical_columns_X,y)
 # get the rf predictions (for future purposes)
-test_rf_predictions=rf.predict_proba(categorical_columns_new_test)[:,1]
-
+#test_rf_predictions=rf.predict_proba(categorical_columns_new_test)[:,1]
 # Region indeces for categorical_columns_X and categorical_columns_new_test
-region_indexes = rf.apply(categorical_columns_X)
-region_indexes_test = rf.apply(categorical_columns_new_test)
+#region_indexes = rf.apply(categorical_columns_X)
+#region_indexes_test = rf.apply(categorical_columns_new_test)
+
+# RandomTreesEmbedding
+from sklearn.ensemble import RandomTreesEmbedding
+rt = RandomTreesEmbedding(n_estimators = 50, max_depth = 8, random_state = 0)
+#rt fit
+rt.fit(categorical_columns_X,y)
+# Region indeces for categorical_columns_X and categorical_columns_new_test
+region_indexes = rt.apply(categorical_columns_X)
+region_indexes_test = rt.apply(categorical_columns_new_test)
 
 # OneHotEncoder
 enc = OneHotEncoder()
