@@ -156,6 +156,17 @@ test_encoding = enc.transform(region_indexes_test)
 
 type(train_encoding)
 type(test_encoding)
+
+# SVD to reduce dimensions
+
+from sklearn.decomposition import TruncatedSVD
+# Reduce down to 10 components
+svd = TruncatedSVD(n_components=10)
+svd.fit(train_encoding)
+train_encoding_reduced = svd.transform(train_encoding)
+test_encoding_reduced = svd.transform(test_encoding)
+
+
 # Convert numerical dataframe to sparse matrix
 
 numerical_X_sparse = scipy.csr_matrix(numerical_columns_X.values)
@@ -172,9 +183,10 @@ processed_test = hstack((test_encoding, numerical_test_sparse))
 # LogisticRegressionCV
 
 from sklearn.linear_model import LogisticRegressionCV
-lrcv = LogisticRegressionCV(cv=5, random_state=0,max_iter = 500,penalty='l2').fit(processed_train, y)
+from sklearn.linear_model import LogisticRegression
+#lrcv = LogisticRegressionCV(cv=5, random_state=0,max_iter = 500,penalty='l1',solver = "liblinear",Cs = [0.123456789]).fit(processed_train, y) 
+lr = LogisticRegression(C=0.123456789, solver="lbfgs", max_iter=10000,random_state = 42,intercept_scaling = 0.1,verbose=1).fit(processed_train,y)
 
-
-sample_sub_df['target'] =  lrcv.predict_proba(processed_test)[:,1]
-sample_sub_df.to_csv('submission47.csv', index=False)
+sample_sub_df['target'] =  lr.predict_proba(processed_test)[:,1]
+sample_sub_df.to_csv('submission73.csv', index=False)
 
