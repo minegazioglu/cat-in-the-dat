@@ -143,7 +143,7 @@ train_ohe = dummies.iloc[:train.shape[0], :]
 test_ohe = dummies.iloc[train.shape[0]:, :]
 
 %%time
-# convert sparse matrices to 
+# convert to sparse matrices 
 train_ohe = train_ohe.sparse.to_coo().tocsr()
 test_ohe = test_ohe.sparse.to_coo().tocsr()
 
