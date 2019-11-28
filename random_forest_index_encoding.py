@@ -8,6 +8,10 @@ import warnings
 warnings.filterwarnings("ignore")
 import scipy.sparse as scipy
 from scipy.sparse import coo_matrix, hstack, csr_matrix
+from scipy import sparse
+import gc
+from sklearn.model_selection import GridSearchCV
+
 
 # importing train & test data
 
@@ -16,7 +20,6 @@ test = pd.read_csv("Kaggle/catinthedat/test.csv")
 sample_sub_df = pd.read_csv("Kaggle/catinthedat/sample_submission.csv")
 
 ##Encode bin_3 & bin_4
-
 #dictionary for encoding bin_3 & bin_4
 bin34_dict = {"T":1,"F":0,"Y":1,"N":0}
 
@@ -34,9 +37,6 @@ test["bin_4"] = test["bin_4"].map(bin34_dict)
 # Red -> (255,0,0)
 # Blue -> (0,0,255)
 # Green -> (0,128,0)
-
-#nom_0_dict = {"Red":255,"Blue":255,"Green":128}
-#train["nom_0"] = train["nom_0"].map(nom_0_dict)
 train = pd.get_dummies(train, columns = ["nom_0"])
 test = pd.get_dummies(test, columns = ["nom_0"])
 
@@ -112,7 +112,7 @@ new_test = test.drop(["id","day","month"], axis = 1)
 X = new_train
 y = train["target"]
 
-#####
+####################
 
 # Random Forest Region Indexes Encoding
 
@@ -124,56 +124,59 @@ categorical_columns_new_test = new_test.select_dtypes(include=['category','objec
 numerical_columns_X = X[X.columns.difference(list(categorical_columns_X))]
 numerical_columns_new_test = new_test[new_test.columns.difference(list(categorical_columns_new_test))]
 
-# OHE
+le = LabelEncoder()
+# OHE of categorical columns
+# Make a copy of feature dataframe X to use in OneHotEncoding and then later in RandomForest
+OHE_X = categorical_columns_X.copy()
+OHE_X_test = categorical_columns_new_test.copy()
+
+cat_columns = list(OHE_X.select_dtypes(include=['category','object']))
+for col in cat_columns:
+    le.fit(OHE_X[col])
+    OHE_X[col] = le.transform(OHE_X[col])
+    OHE_X_test[col] = le.transform(OHE_X_test[col])
+    
 ohe = OneHotEncoder()
-
-# Fit categorical_columns_X
-ohe.fit(categorical_columns_X)
-
-# Transform categorical_columns_X and categorical_columns_new_test
-categorical_columns_X = ohe.transform(categorical_columns_X)
-categorical_columns_new_test = ohe.transform(categorical_columns_new_test)
-
-# Random Forest
-#rf = RandomForestClassifier(n_estimators = 50, max_depth = 8, random_state = 0)
-# rf.fit
-#rf.fit(categorical_columns_X,y)
-# get the rf predictions (for future purposes)
-#test_rf_predictions=rf.predict_proba(categorical_columns_new_test)[:,1]
-# Region indeces for categorical_columns_X and categorical_columns_new_test
-#region_indexes = rf.apply(categorical_columns_X)
-#region_indexes_test = rf.apply(categorical_columns_new_test)
+ohe.fit(OHE_X)
+OHE_X = ohe.transform(OHE_X)
+OHE_X_test = ohe.transform(OHE_X_test)
 
 # RandomTreesEmbedding
-from sklearn.ensemble import RandomTreesEmbedding
-rt = RandomTreesEmbedding(n_estimators = 50, max_depth = 8, random_state = 0)
+#from sklearn.ensemble import RandomTreesEmbedding
+#rt = RandomTreesEmbedding(n_estimators = 100, max_depth = 14, random_state = 0)
 #rt fit
-rt.fit(categorical_columns_X,y)
+#rt.fit(OHE_X,y)
 # Region indeces for categorical_columns_X and categorical_columns_new_test
-region_indexes = rt.apply(categorical_columns_X)
-region_indexes_test = rt.apply(categorical_columns_new_test)
+#region_indexes = rt.apply(OHE_X)
+#region_indexes_test = rt.apply(OHE_X_test)
 
-# OneHotEncoder
-enc = OneHotEncoder()
-enc.fit(region_indexes)
-
-train_encoding = enc.transform(region_indexes)
-test_encoding = enc.transform(region_indexes_test)
-
-type(train_encoding)
-type(test_encoding)
 
 # SVD to reduce dimensions
 
-from sklearn.decomposition import TruncatedSVD
+#from sklearn.decomposition import TruncatedSVD
 # Reduce down to 10 components
-svd = TruncatedSVD(n_components=10)
-svd.fit(train_encoding)
-train_encoding_reduced = svd.transform(train_encoding)
-test_encoding_reduced = svd.transform(test_encoding)
+#svd = TruncatedSVD(n_components=10)
+#svd.fit(train_encoding)
+#train_encoding_reduced = svd.transform(train_encoding)
+#test_encoding_reduced = svd.transform(test_encoding)
 
+# RandomForest
+# Number of Trees: 5, Depth: 3 
+rf = RandomForestClassifier(n_estimators=100, max_depth=14,random_state=0)
+rf.fit(OHE_X, y)  
 
-# Convert numerical dataframe to sparse matrix
+# get the rf predictions (for future purposes)
+test_rf_predictions=rf.predict_proba(OHE_X_test)[:,1]  
+# Get region indexes
+region_indexes = rf.apply(OHE_X)
+region_indexes_test = rf.apply(OHE_X_test)
+enc = OneHotEncoder(categorical_features='all',handle_unknown='ignore')
+enc.fit(region_indexes)
+
+train_encoding=enc.transform(region_indexes)
+test_encoding=enc.transform(region_indexes_test)
+
+# turn numerical columns to sparse matrices
 
 numerical_X_sparse = scipy.csr_matrix(numerical_columns_X.values)
 numerical_test_sparse = scipy.csr_matrix(numerical_columns_new_test.values)
@@ -181,18 +184,30 @@ numerical_test_sparse = scipy.csr_matrix(numerical_columns_new_test.values)
 # Concat sparse matrices
 
 from scipy.sparse import hstack
-processed_train = hstack((train_encoding_reduced, numerical_X_sparse))
+processed_train = hstack((train_encoding, numerical_X_sparse))
 
-processed_test = hstack((test_encoding_reduced, numerical_test_sparse))
+processed_test = hstack((test_encoding, numerical_test_sparse))
 
+
+###
 
 # LogisticRegressionCV
 
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.linear_model import LogisticRegression
 #lrcv = LogisticRegressionCV(cv=5, random_state=0,max_iter = 500,penalty='l1',solver = "liblinear",Cs = [0.123456789]).fit(processed_train, y) 
-lr = LogisticRegression(C=0.123456789, solver="lbfgs", max_iter=10000,random_state = 42,intercept_scaling = 0.1,verbose=1).fit(processed_train,y)
+lr = LogisticRegression(C=0.1234, solver="lbfgs", max_iter=10000,random_state = 42,intercept_scaling = 0.1,verbose=1).fit(processed_train,y)
+
 
 sample_sub_df['target'] =  lr.predict_proba(processed_test)[:,1]
-sample_sub_df.to_csv('submission73.csv', index=False)
+sample_sub_df.to_csv('submission.csv', index=False)
 
+
+# GridSearch
+# param_test1 = {'n_estimators': [50,60,70,80,90,100]}
+#gr = GridSearchCV(RandomForestClassifier(random_state=0, max_depth = 14),
+#                        param_test1,
+#                        verbose = 1,
+#                        scoring='roc_auc')
+#gr.fit(OHE_X,y)
+#print(gr.cv_results_, gr.best_params_, gr.best_score_)
