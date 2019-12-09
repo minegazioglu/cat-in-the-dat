@@ -159,7 +159,21 @@ import binascii
 for column in hexadecimal_columns:
     train[column] = train[column].apply(lambda x: int(x,36))
     test[column] = test[column].apply(lambda x: int(x,36))
+    
+# Standard Scaler
 
+from sklearn.preprocessing import StandardScaler
+
+train_to_be_scaled = train[['mnth_sin', 'mnth_cos', 'day_sin', 'day_cos']]
+test_to_be_scaled = test[['mnth_sin', 'mnth_cos', 'day_sin', 'day_cos']]
+se = StandardScaler()
+se.fit(train_to_be_scaled)
+train_to_be_scaled = se.transform(train_to_be_scaled)
+test_to_be_scaled = se.transform(test_to_be_scaled)
+train_to_be_scaled_df = pd.DataFrame(train_to_be_scaled,columns = ['mnth_sin', 'mnth_cos', 'day_sin', 'day_cos'])
+test_to_be_scaled_df = pd.DataFrame(test_to_be_scaled, columns = ['mnth_sin', 'mnth_cos', 'day_sin', 'day_cos'])
+train = pd.concat([train.drop(['mnth_sin', 'mnth_cos', 'day_sin', 'day_cos'],axis = 1),train_to_be_scaled_df],axis = 1)
+test = pd.concat([test.drop(['mnth_sin', 'mnth_cos', 'day_sin', 'day_cos'],axis = 1),test_to_be_scaled_df],axis = 1)
     
 #dummy encoding
 traintest = pd.concat([train,test])
@@ -187,11 +201,11 @@ lr.fit(train_ohe,target)
 
 
 sample_sub_df['target'] =  lr.predict_proba(test_ohe)[:,1]
-sample_sub_df.to_csv('subm85.csv', index=False)
+sample_sub_df.to_csv('subm102.csv', index=False)
         
 
 
-# train score
+# StratifiedKFold cv score
 
 folds = StratifiedKFold(n_splits = 5,shuffle = True,random_state = 42)
 
